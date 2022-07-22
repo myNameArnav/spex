@@ -1,7 +1,6 @@
 import requests
 import base64
-
-global token
+from util import clientSecretID
 
 
 def postToken(clientID, secretID):
@@ -20,15 +19,17 @@ def postToken(clientID, secretID):
     }
 
     response = requests.request("POST", url, data=payload, headers=headers).json()
-    token = response["access_token"]
 
-    return token
+    return response
 
 
 def getPlaylists(limit, offset=0):
     """
     Sends GET request to Spotify to get all the user's playlists
     """
+
+    clientID, secretID = clientSecretID()
+    token = postToken(clientID, secretID)
 
     url = f"https://api.spotify.com/v1/me/playlists"
 
@@ -48,6 +49,9 @@ def getSongs(playlistID, limit, offset):
     """
     Sends GET request to Spotify to get the playlist's songs using ```playlistID```
     """
+
+    clientID, secretID = clientSecretID()
+    token = postToken(clientID, secretID)
 
     url = f"https://api.spotify.com/v1/playlists/{playlistID}/tracks"
 
