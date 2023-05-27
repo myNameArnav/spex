@@ -36,6 +36,6 @@ This script allows you to export your Spotify playlists as CSV files, including 
 
 5. The script will fetch your playlists and save each playlist as a separate CSV file in the `backup` folder.
 
-6.The CSV files will contain the track name, artist, album, and URL for each song in the playlist.
+6. The CSV files will contain the track name, artist, album, and URL for each song in the playlist.
 
 (Thanks GPT3.5)
