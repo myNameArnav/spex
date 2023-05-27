@@ -1,5 +1,7 @@
 __pycache__
 secret.py
 test*.py
-dict.py
 *.json
+*.xlsx
+*.csv
+config.py

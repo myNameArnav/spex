@@ -1,81 +1,126 @@
-from requests.auth import HTTPBasicAuth
-from requests_oauthlib import OAuth2Session
-from openpyxl import load_workbook
+import csv
+import os
+import requests
+from sanitize_filename import sanitize
+from config import CLIENT_ID, CLIENT_SECRET, REDIRECT_URI, USER_ID
 
-client_id = 'd3a47d91f6ea425192e833b4e6c5e688'
-client_secret = '0f27fcf6e9d54260bf92f64f2da8537d'
-redirect_uri = 'https://developer.spotify.com/'
-user_id = '31zc6ritsk5fyws7f4vkhnekloxq'
 
-authorization_base_url = "https://accounts.spotify.com/authorize"
-token_url = "https://accounts.spotify.com/api/token"
-scope = [
-   "user-read-email",
-   "playlist-read-collaborative",
-   "playlist-read-private"
-]
+# Spotify API endpoints
+AUTH_URL = "https://accounts.spotify.com/authorize"
+TOKEN_URL = "https://accounts.spotify.com/api/token"
+PLAYLISTS_URL = f"https://api.spotify.com/v1/users/{USER_ID}/playlists"
 
-spotify = OAuth2Session(client_id, scope=scope, redirect_uri=redirect_uri)
+# Replace with the desired scopes
+SCOPE = "playlist-read-private"
 
-authorization_url, state = spotify.authorization_url(authorization_base_url)
-print('Please go here and authorize: ', authorization_url)
+# Create backup folder if it doesn't exist
+backup_folder = "backup"
+if not os.path.exists(backup_folder):
+    os.makedirs(backup_folder)
 
-redirect_response = input('\n\nPaste the full redirect URL here: ')
+# Get authorization code
+auth_params = {
+    "response_type": "code",
+    "client_id": CLIENT_ID,
+    "redirect_uri": REDIRECT_URI,
+    "scope": SCOPE,
+}
 
-auth = HTTPBasicAuth(client_id, client_secret)
+auth_url = f'{AUTH_URL}?{"&".join([f"{k}={v}" for k, v in auth_params.items()])}'
+print(f"Please authorize the application by visiting the following URL:\n{auth_url}\n")
 
-token = spotify.fetch_token(token_url, auth=auth, authorization_response=redirect_response)
-access_token = token["access_token"]
+authorization_code = input("Enter the authorization code from the redirect URL: ")
 
-user = 'https://api.spotify.com/v1/users/' + user_id + '/playlists'
-r = spotify.get(user)
+# Get access token using authorization code
+token_response = requests.post(
+    TOKEN_URL,
+    {
+        "grant_type": "authorization_code",
+        "code": authorization_code,
+        "redirect_uri": REDIRECT_URI,
+        "client_id": CLIENT_ID,
+        "client_secret": CLIENT_SECRET,
+    },
+)
 
-playlists = r.json()
+token_data = token_response.json()
+access_token = token_data.get("access_token")
 
-link = "Spotify.xlsx"
-wb = load_workbook(filename=link)
+if not access_token:
+    error_message = token_data.get("error_description", "Access token not found.")
+    print(f"Error retrieving access token: {error_message}")
+    exit()
 
-index = 1
+# Fetch user playlists
+playlists = []
+offset = 0
+limit = 50
 
-for i in range(len(playlists["items"])):
-    
-    playlist_link = playlists["items"][i]['href']
-    
-    r = spotify.get(playlist_link)
+while True:
+    playlists_response = requests.get(
+        PLAYLISTS_URL,
+        headers={"Authorization": f"Bearer {access_token}"},
+        params={"offset": offset, "limit": limit},
+    )
 
-    playlist_details = r.json()
-    playlist_name = playlist_details["name"]
-    
-    endpoint = playlist_link + '/tracks'
-    r = spotify.get(endpoint)
-    tracks = r.json()
-    
-    if playlist_name in wb.worksheets:
-        sheet = wb[playlist_name]
-        #print(sheet)
-    else:
-        wb.create_sheet(playlist_name)
-        wb.save(link)
-        wb = load_workbook(filename=link)
-        sheet = wb[playlist_name]
-        #print(sheet)
-    
-    sheetAll = wb["ALL"]
-    
-    for i in range(len(tracks["items"])):
-        track_link = tracks["items"][i]["track"]["album"]["artists"][0]["external_urls"]["spotify"]
-        
-        c1 = sheetAll.cell(row=index, column=1)
-        c1.value = track_link
-        
-        c2 = sheet.cell(row=(i+1), column=1)
-        c2.value = track_link
-        
-        #print(track_link)
-        
-        index += 1
-    
-    #print(playlist_link)
-    
-wb.save(link)
-print("Done")
+    playlists_data = playlists_response.json()
+    playlists.extend(playlists_data["items"])
+
+    if len(playlists_data["items"]) < limit:
+        break
+
+    offset += limit
+
+# Iterate over playlists
+for playlist in playlists:
+    playlist_id = playlist["id"]
+    playlist_name = playlist["name"]
+
+    print(f"Processing playlist: {playlist_name}")
+
+    playlist_tracks_url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+
+    tracks = []
+    offset = 0
+    limit = 100
+
+    while True:
+        tracks_response = requests.get(
+            playlist_tracks_url,
+            headers={"Authorization": f"Bearer {access_token}"},
+            params={"offset": offset, "limit": limit},
+        )
+
+        tracks_data = tracks_response.json()
+        tracks.extend(tracks_data["items"])
+
+        if len(tracks_data["items"]) < limit:
+            break
+
+        offset += limit
+
+    # Sanitize playlist name for file name
+    sanitized_playlist_name = sanitize(playlist_name)
+
+    # Store tracks in a CSV file
+    csv_filename = f"{sanitized_playlist_name}.csv"
+    csv_filepath = os.path.join(backup_folder, csv_filename)
+
+    with open(csv_filepath, "w", newline="", encoding="utf-8") as csv_file:
+        writer = csv.writer(csv_file)
+        writer.writerow(["Track Name", "Artist", "Album", "URL"])
+
+        for track in tracks:
+            try:
+                track_name = track["track"]["name"]
+                artist = track["track"]["artists"][0]["name"]
+                album = track["track"]["album"]["name"]
+                url = track["track"]["external_urls"]["spotify"]
+            except:
+                continue
+
+            writer.writerow([track_name, artist, album, url])
+
+    print(f'Playlist "{playlist_name}" exported to {csv_filepath}')
+
+print("All playlists exported successfully.")
