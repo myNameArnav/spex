@@ -20,22 +20,41 @@ This script allows you to export your Spotify playlists as CSV files, including 
 
     - Note down the Client ID, Client Secret, and Redirect URI.
 
-5. Rename a file named `config.py.sample` to `config.py` in the project directory.
+5. Create a `.env` file in the project directory with your Spotify API credentials:
 
-6. Open `config.py` and add the following content, replacing the placeholder values with your actual Spotify API credentials
+```
+CLIENT_ID=your_client_id_here
+CLIENT_SECRET=your_client_secret_here
+REDIRECT_URI=your_redirect_uri_here
+USER_ID=your_spotify_username_here
+```
 
 ## Usage
 
-1. Run the script using the following command: `python main.py`
+### First-time Setup (Authorization Required)
 
-2. The script will prompt you to authorize the application by visiting the provided authorization URL.
+1. Run the script with the `--authorize` flag: `python main.py --authorize`
 
-3. After authorizing the application, you will be redirected to the specified Redirect URI. Copy the authorization code from the URL. (ie the part after `?code=`)
+2. The script will automatically open your browser to the Spotify authorization page.
+
+3. After authorizing the application, you will be redirected to the specified Redirect URI. Copy the authorization code from the URL (the part after `?code=`).
 
 4. Paste the authorization code into the script's prompt.
 
-5. The script will fetch your playlists and save each playlist as a separate CSV file in the `backup` folder.
+5. The script will save your tokens for future use and export your playlists.
 
-6. The CSV files will contain the track name, artist, album, and URL for each song in the playlist.
+### Subsequent Runs (Headless Mode)
 
-(Thanks GPT3.5)
+Once authorized, you can run the script in headless mode:
+
+- **Interactive mode**: `python main.py` (will prompt for authorization if tokens are expired)
+- **Headless mode**: `python main.py --headless` (will exit if tokens are expired, requiring manual re-authorization)
+
+### Output
+
+The script will fetch your playlists and save each playlist as a separate CSV file in the `backup` folder. The CSV files will contain the track name, artist, album, and URL for each song in the playlist.
+
+### Command Line Options
+
+- `--authorize`: Force authorization flow (required for first run)
+- `--headless`: Run in headless mode (no interactive prompts)

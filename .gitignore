@@ -4,4 +4,5 @@ test*.py
 *.json
 *.xlsx
 *.csv
-config.py
+.env
+*.log
