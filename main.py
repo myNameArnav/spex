@@ -23,7 +23,7 @@ if not CLIENT_ID or not CLIENT_SECRET or not REDIRECT_URI or not USER_ID:
     exit(1)
 
 # Token storage file
-TOKEN_FILE = "spotify_tokens.json"
+TOKEN_FILE = os.path.join(os.path.dirname(__file__), "spotify_tokens.json")
 
 # Spotify API endpoints
 AUTH_URL = "https://accounts.spotify.com/authorize"
@@ -33,7 +33,7 @@ PLAYLISTS_URL = f"https://api.spotify.com/v1/users/{USER_ID}/playlists"
 SCOPE = "playlist-read-private"
 
 # Create backup folder if it doesn't exist
-backup_folder = os.path.join("backup", datetime.now().strftime('%Y'), datetime.now().strftime('%m'), datetime.now().strftime('%d'))
+backup_folder = os.path.join(os.path.dirname(__file__), "backup", datetime.now().strftime('%Y'), datetime.now().strftime('%m'), datetime.now().strftime('%d'))
 if not os.path.exists(backup_folder):
     os.makedirs(backup_folder)
 

@@ -4,9 +4,9 @@ Logging configuration for Spotify Playlist Exporter
 import logging
 import sys
 from logging.handlers import RotatingFileHandler
+import os
 
-
-def setup_logging(log_level=logging.INFO, log_file='spotify_exporter.log', 
+def setup_logging(log_level=logging.INFO, log_file=os.path.join(os.path.dirname(__file__), "spotify_exporter.log"), 
                   max_bytes=1024*1024, backup_count=3, console_output=True):
     """
     Set up logging configuration with both file and console output
